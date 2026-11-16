@@ -28,9 +28,27 @@ import androidx.navigation.NavController
 import com.nutridiario.app.*
 import java.time.LocalTime
 
+/** Vuelve a "Hoy" desde cualquier sitio, dejando "Hoy" como única pantalla en la pila. */
 fun goToday(nav: NavController) {
-    nav.navigate("today") { popUpTo(nav.graph.id) { inclusive = true } }
+    if (nav.currentDestination?.route == "today") return
+    if (!nav.popBackStack("today", inclusive = false)) {
+        nav.navigate("today") { popUpTo(nav.graph.id) { inclusive = true } }
+    }
 }
+
+/** Cambia de pestaña: "Hoy" siempre queda debajo, así la casita y el botón Atrás funcionan siempre. */
+fun goTab(nav: NavController, route: String) {
+    if (route == "today") { goToday(nav); return }
+    if (nav.currentDestination?.route == route) return
+    if (nav.hasToday()) {
+        nav.navigate(route) { popUpTo("today") { inclusive = false }; launchSingleTop = true }
+    } else {
+        nav.navigate(route) { launchSingleTop = true }
+    }
+}
+
+private fun NavController.hasToday(): Boolean =
+    runCatching { getBackStackEntry("today"); true }.getOrDefault(false)
 
 @Composable
 fun FoodDetailScreen(nav: NavController) {

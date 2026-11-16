@@ -14,8 +14,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -50,7 +52,6 @@ fun AppRoot() {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
-    val start = if (Repository.data.value.profile.configured) "today" else "profile"
 
     Scaffold(
         bottomBar = {
@@ -59,24 +60,25 @@ fun AppRoot() {
                     tabs.forEach { t ->
                         NavigationBarItem(
                             selected = current == t.route,
-                            onClick = {
-                                nav.navigate(t.route) {
-                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
+                            onClick = { goTab(nav, t.route) },
                             icon = { Icon(t.icon, null) },
                             label = { Text(t.label) },
                             colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer),
+                            modifier = Modifier.testTag("tab_${t.route}"),
                         )
                     }
                 }
             }
         }
     ) { pad ->
-        NavHost(nav, startDestination = start, modifier = Modifier.padding(pad)) {
-            composable("today") { TodayScreen(nav) }
+        NavHost(nav, startDestination = "today", modifier = Modifier.padding(pad)) {
+            composable("today") {
+                // Siempre se empieza en "Hoy"; el primer día se abre el perfil encima para rellenarlo.
+                LaunchedEffect(Unit) {
+                    if (!Repository.data.value.profile.configured) nav.navigate("profile") { launchSingleTop = true }
+                }
+                TodayScreen(nav)
+            }
             composable("add") { AddScreen(nav) }
             composable("progress") { ProgressScreen() }
             composable("profile") { ProfileScreen(nav) }

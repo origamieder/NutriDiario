@@ -19,9 +19,9 @@ object Repository {
 
     fun initFile(f: File) {
         file = f
-        if (file.exists()) {
-            runCatching { _data.value = json.decodeFromString(AppData.serializer(), file.readText()) }
-        }
+        _data.value = if (file.exists()) {
+            runCatching { json.decodeFromString(AppData.serializer(), file.readText()) }.getOrDefault(AppData())
+        } else AppData()
     }
 
     @Synchronized
