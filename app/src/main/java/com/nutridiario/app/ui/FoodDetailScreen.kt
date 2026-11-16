@@ -27,7 +27,8 @@ fun FoodDetailScreen(nav: NavController) {
     val food = Session.pendingFood
     if (food == null) { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val editing = Session.editingEntry
-    var gramsText by remember { mutableStateOf(fmt(Session.pendingGrams ?: food.defaultAmount(), 0)) }
+    val lastAmount = remember { if (editing == null) Repository.lastAmountFor(food) else null }
+    var gramsText by remember { mutableStateOf(fmt(Session.pendingGrams ?: lastAmount ?: food.defaultAmount(), 0)) }
     var meal by remember { mutableStateOf(editing?.meal ?: Meal.byTime(LocalTime.now().hour)) }
     val grams = gramsText.replace(',', '.').toDoubleOrNull() ?: 0.0
     val n = food.per100.forGrams(grams)
@@ -51,7 +52,15 @@ fun FoodDetailScreen(nav: NavController) {
             OutlinedTextField(
                 value = gramsText,
                 onValueChange = { gramsText = it.filter { c -> c.isDigit() || c == ',' || c == '.' } },
-                label = { Text(if (food.packageG != null) "Cantidad (puesta según el envase)" else "Cantidad (aproximada)") },
+                label = {
+                    Text(
+                        when {
+                            Session.pendingGrams == null && lastAmount != null -> "Cantidad (la misma que la última vez)"
+                            food.packageG != null && food.defaultAmount() == food.packageG -> "Cantidad (envase entero)"
+                            else -> "Cantidad (aproximada)"
+                        }
+                    )
+                },
                 suffix = { Text(food.unit) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,

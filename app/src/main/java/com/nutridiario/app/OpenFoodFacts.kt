@@ -12,13 +12,30 @@ object OpenFoodFacts {
     private const val FIELDS =
         "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,quantity,product_quantity,product_quantity_unit"
 
+    /** Open Food Facts a veces responde 503 cuando está saturado: se reintenta un par de veces. */
     private fun get(url: String): JSONObject {
+        var last: Exception? = null
+        repeat(3) { attempt ->
+            try {
+                return getOnce(url)
+            } catch (e: ServerBusy) {
+                last = e
+                Thread.sleep(1500L * (attempt + 1))
+            }
+        }
+        throw Exception("Open Food Facts está saturado ahora mismo, inténtalo en un momento", last)
+    }
+
+    private class ServerBusy(code: Int) : Exception("HTTP $code")
+
+    private fun getOnce(url: String): JSONObject {
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 15000
         c.readTimeout = 20000
         c.setRequestProperty("User-Agent", "NutriDiario/1.0 (Android)")
         try {
             if (c.responseCode == 404) return JSONObject()
+            if (c.responseCode >= 500 || c.responseCode == 429) throw ServerBusy(c.responseCode)
             if (c.responseCode !in 200..299) throw Exception("Error del servidor (${c.responseCode})")
             return JSONObject(c.inputStream.bufferedReader().use { it.readText() })
         } finally {

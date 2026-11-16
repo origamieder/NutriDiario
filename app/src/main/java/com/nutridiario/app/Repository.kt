@@ -60,6 +60,14 @@ object Repository {
         d.copy(customFoods = d.customFoods.filterNot { it.name.equals(f.name, true) } + f)
     }
 
+    /** Cantidad que usaste la última vez con este mismo producto (por código de barras o nombre+marca). */
+    fun lastAmountFor(food: FoodItem): Double? = _data.value.entries
+        .filter { e ->
+            if (food.barcode != null && e.food.barcode != null) e.food.barcode == food.barcode
+            else e.food.name.equals(food.name, true) && (e.food.brand ?: "").equals(food.brand ?: "", true)
+        }
+        .maxByOrNull { it.timestamp }?.grams
+
     fun entriesFor(date: String) = _data.value.entries.filter { it.date == date }
 
     /** Alimentos usados recientemente (sin repetir), para añadirlos rápido. */

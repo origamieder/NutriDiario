@@ -47,14 +47,16 @@ data class FoodItem(
      * (lata, botellín, paquete de galletas…), si no la ración indicada, si no 100.
      */
     fun defaultAmount(): Double = when {
-        packageG != null && packageG <= MAX_SINGLE_PACKAGE -> packageG
+        packageG != null && packageG <= (if (unit == "ml") MAX_SINGLE_DRINK else MAX_SINGLE_PACKAGE) -> packageG
         portionG != null -> portionG
         else -> 100.0
     }
 
     companion object {
-        /** Envases hasta este tamaño se consideran "de una vez" (latas de 500 ml, bolsas, paquetes pequeños). */
-        const val MAX_SINGLE_PACKAGE = 600.0
+        /** Bebidas hasta este tamaño se consideran "de una vez" (latas de 500 ml, botellines…). */
+        const val MAX_SINGLE_DRINK = 600.0
+        /** Sólidos hasta este peso se consideran "de una vez" (bolsas de patatas, chocolatinas, paquetes individuales). */
+        const val MAX_SINGLE_PACKAGE = 200.0
     }
 }
 
