@@ -86,6 +86,7 @@ class Screenshots {
     @Test fun recipesTall() {
         noNetworkPhotos()
         Repository.setPantry(listOf("pollo", "arroz", "pimiento", "cebolla", "tomate", "huevo", "patata"))
+        Repository.setDislikes(DietGroup.FISH.ids.toList()); Repository.setRecipeSort("PROTEIN_DESC")
         shot("8b_recetas_resultados") { RecipesScreen(rememberNavController()) }
     }
     @Test fun recipes() {

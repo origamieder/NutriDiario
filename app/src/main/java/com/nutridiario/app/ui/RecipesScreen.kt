@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -74,10 +75,14 @@ fun RecipesScreen(nav: NavController) {
     val eatenToday = data.entries.filter { it.date == LocalDate.now().toString() }.sumOf { it.nutrients.kcal }
     val kcalLeft = report.targets.kcal - eatenToday
     val meal = Meal.byTime(LocalTime.now().hour)
-    val matches = remember(mine) { if (mine.isEmpty()) emptyList() else RecipeBook.suggest(mine) }
-    val ready = matches.filter { it.missing.isEmpty() }
-    val almost = matches.filter { it.missing.isNotEmpty() }
-    val ideas = remember(kcalLeft.toInt() / 50, meal) { RecipeBook.ideas(meal, kcalLeft, report.targets.kcal).take(6) }
+    val dislikes = data.dislikes.toSet()
+    val sort = RecipeSort.of(data.recipeSort)
+    val matches = remember(mine, dislikes) { if (mine.isEmpty()) emptyList() else RecipeBook.suggest(mine, dislikes = dislikes) }
+    val ready = matches.filter { it.missing.isEmpty() }.sortedBy(sort)
+    val almost = matches.filter { it.missing.isNotEmpty() }.sortedBy(sort)
+    val ideas = remember(kcalLeft.toInt() / 50, meal, dislikes, sort) {
+        RecipeBook.ideas(meal, kcalLeft, report.targets.kcal, dislikes).take(6).map { RecipeBook.match(it.recipe, mine) }.sortedBy(sort)
+    }
 
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
@@ -152,6 +157,8 @@ fun RecipesScreen(nav: NavController) {
             }
         }
 
+        item { PreferencesCard(data.dislikes) }
+        item { SortBar(sort) }
         if (mine.isNotEmpty()) {
             item { SectionHeader("✅ Puedes cocinarlo ya", ready.size) }
             if (ready.isEmpty()) item {
@@ -170,7 +177,7 @@ fun RecipesScreen(nav: NavController) {
                 style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        items(ideas, key = { "i" + it.recipe.id }) { m -> RecipeCard(RecipeBook.match(m.recipe, mine), kcalLeft, showMissing = mine.isNotEmpty()) { open(nav, m.recipe) } }
+        items(ideas, key = { "i" + it.recipe.id }) { m -> RecipeCard(m, kcalLeft, showMissing = mine.isNotEmpty()) { open(nav, m.recipe) } }
         item {
             TextButton(onClick = { nav.navigate("allrecipes") }, modifier = Modifier.fillMaxWidth()) {
                 Text("Ver las ${RecipeBook.recipes.size} recetas")
@@ -216,9 +223,12 @@ fun RecipeCard(m: RecipeMatch, kcalLeft: Double, showMissing: Boolean = true, on
         Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp)) {
             Text(r.name, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                "⏱ ${r.minutes} min · 🔥 ${fmt(n.kcal, 0)} kcal · 💪 ${fmt(n.protein, 0)} g",
-                style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 3.dp),
+                "⏱ ${r.minutes} min · 🔥 ${fmt(n.kcal, 0)} kcal",
+                style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp),
             )
+            Row(Modifier.padding(top = 2.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MacroDot("P", n.protein, ProteinC); MacroDot("H", n.carbs, CarbsC); MacroDot("G", n.fat, FatC)
+            }
             when {
                 !showMissing -> if (kcalLeft > 0 && n.kcal <= kcalLeft) Badge2("Encaja en tu día", MaterialTheme.colorScheme.primary)
                 m.missing.isEmpty() -> Badge2("✓ Tienes todo", MaterialTheme.colorScheme.primary)
@@ -244,6 +254,8 @@ fun Badge2(text: String, color: Color) {
 fun AllRecipesScreen(nav: NavController) {
     val data by Repository.data.collectAsStateWithLifecycle()
     val mine = data.pantry.toSet()
+    val dislikes = data.dislikes.toSet()
+    val sort = RecipeSort.of(data.recipeSort)
     var filter by remember { mutableStateOf<String?>(null) }
     val tags = listOf("desayuno" to "☀️ Desayuno", "comida" to "🍽️ Comida", "merienda" to "🍎 Merienda", "cena" to "🌙 Cena")
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -254,9 +266,102 @@ fun AllRecipesScreen(nav: NavController) {
                     tags.forEach { (t, label) -> FilterChip(filter == t, { filter = if (filter == t) null else t }, label = { Text(label, style = Caption) }) }
                 }
             }
-            items(RecipeBook.recipes.filter { filter == null || filter in it.meals }, key = { it.id }) { r ->
-                RecipeCard(RecipeBook.match(r, mine), 0.0, showMissing = mine.isNotEmpty()) { open(nav, r) }
+            item { SortBar(sort) }
+            val list = RecipeBook.recipes.filter { (filter == null || filter in it.meals) && RecipeBook.allowed(it, dislikes) }
+                .map { RecipeBook.match(it, mine) }.sortedBy(sort)
+            if (dislikes.isNotEmpty()) item {
+                Text("Ocultas ${RecipeBook.recipes.size - RecipeBook.recipes.count { RecipeBook.allowed(it, dislikes) }} recetas con ingredientes que has excluido", style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(list, key = { it.recipe.id }) { m ->
+                RecipeCard(m, 0.0, showMissing = mine.isNotEmpty()) { open(nav, m.recipe) }
             }
         }
     }
 }
+
+@Composable
+private fun MacroDot(label: String, grams: Double, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(3.dp))
+        Text("$label ${fmt(grams, 0)} g", style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Barra para ordenar las recetas; la elección se guarda. */
+@Composable
+fun SortBar(sort: RecipeSort) {
+    Column {
+        Text("Ordenar por", style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        val state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = sort.ordinal)
+        androidx.compose.foundation.lazy.LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(RecipeSort.entries) { s ->
+                FilterChip(sort == s, { Repository.setRecipeSort(s.name) }, label = { Text(s.label) })
+            }
+        }
+    }
+}
+
+/** Ingredientes que no quieres: grupos de un toque + ingredientes sueltos. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PreferencesCard(dislikes: List<String>) {
+    val set = dislikes.toSet()
+    var picking by remember { mutableStateOf(false) }
+    fun groupOn(g: DietGroup) = g.ids.all { it in set }
+    AppCard(Modifier.fillMaxWidth()) {
+        Text("🚫 No quiero en mis recetas", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            DietGroup.entries.forEach { g ->
+                FilterChip(groupOn(g), {
+                    if (groupOn(g)) {
+                        // quitar el grupo, pero sin quitar lo que siga cubierto por otro grupo activo
+                        val keep = DietGroup.entries.filter { it != g && groupOn(it) }.flatMap { it.ids }.toSet()
+                        Repository.setDislikes(dislikes.filterNot { it in g.ids && it !in keep })
+                    } else Repository.setDislikes(dislikes + g.ids)
+                }, label = { Text(g.label) })
+            }
+        }
+        val loose = dislikes.filter { id -> DietGroup.entries.none { g -> groupOn(g) && id in g.ids } }.mapNotNull { RecipeBook.ingredients[it] }
+        if (loose.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                loose.forEach { i ->
+                    Row(
+                        Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.errorContainer)
+                            .clickable { Repository.setDislikes(dislikes - i.id) }.padding(start = 10.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("${i.emoji} ${i.name}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Filled.Close, "Quitar", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                }
+            }
+        }
+        TextButton(onClick = { picking = true }) { Text("＋ Excluir otro ingrediente") }
+    }
+    if (picking) {
+        AlertDialog(
+            onDismissRequest = { picking = false },
+            title = { Text("¿Qué no quieres?") },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScrollCompat()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        RecipeBook.ingredients.values.filterNot { it.pantry }.sortedBy { it.name }.forEach { i ->
+                            val on = i.id in set
+                            FilterChip(on, {
+                                Repository.setDislikes(if (on) dislikes - i.id else dislikes + i.id)
+                            }, label = { Text("${i.emoji} ${i.name.substringBefore(" (")}") })
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { picking = false }) { Text("Listo") } },
+        )
+    }
+}
+
+@Composable
+private fun Modifier.verticalScrollCompat() = this.verticalScroll(androidx.compose.foundation.rememberScrollState())

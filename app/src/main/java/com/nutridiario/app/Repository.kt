@@ -82,6 +82,9 @@ object Repository {
         }
         .maxByOrNull { it.timestamp }?.grams
 
+    fun setDislikes(ids: List<String>) = update { d -> d.copy(dislikes = ids.distinct()) }
+    fun setRecipeSort(name: String) = update { d -> d.copy(recipeSort = name) }
+
     fun setPantry(ids: List<String>) = update { d -> d.copy(pantry = ids.distinct()) }
 
     fun cacheIngredientImage(id: String, img: IngredientImage) =

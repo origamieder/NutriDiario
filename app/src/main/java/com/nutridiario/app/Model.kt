@@ -130,6 +130,10 @@ data class AppData(
     val pantry: List<String> = emptyList(),
     /** Foto encontrada para cada ingrediente (se guarda para no buscarla otra vez). */
     val ingredientImages: Map<String, IngredientImage> = emptyMap(),
+    /** Ingredientes que no quieres en las recetas (ids de RecipeBook). */
+    val dislikes: List<String> = emptyList(),
+    /** Orden elegido para las recetas (nombre de RecipeSort). */
+    val recipeSort: String = "RECOMMENDED",
 )
 
 @Serializable

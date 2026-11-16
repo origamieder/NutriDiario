@@ -56,4 +56,18 @@ class RecipeTest {
         assertTrue(ideas.isNotEmpty()); assertTrue(ideas.first().nutrients.kcal < 750)
         println("Ideas cena: " + ideas.take(4).map { it.recipe.name + " " + fmt(it.nutrients.kcal, 0) })
     }
+
+    @Test fun noFishAndSorting() {
+        val noFish = DietGroup.FISH.ids
+        val all = RecipeBook.suggest(setOf("arroz", "tomate", "patata", "huevo", "salmon", "atun"), maxMissing = 9, dislikes = noFish)
+        assertTrue(all.isNotEmpty())
+        assertTrue(all.none { m -> m.recipe.ingredients.any { it.id in noFish } })
+        val ideas = RecipeBook.ideas(Meal.DINNER, 700.0, 2000.0, noFish)
+        assertTrue(ideas.none { m -> m.recipe.ingredients.any { it.id in noFish } })
+        val byKcal = all.sortedBy(RecipeSort.KCAL_ASC).map { it.nutrients.kcal }
+        assertEquals(byKcal.sorted(), byKcal)
+        val byProt = all.sortedBy(RecipeSort.PROTEIN_DESC).map { it.nutrients.protein }
+        assertEquals(byProt.sortedDescending(), byProt)
+        println("Sin pescado se ocultan: " + RecipeBook.recipes.filterNot { RecipeBook.allowed(it, noFish) }.map { it.name })
+    }
 }

@@ -32,6 +32,49 @@ data class RecipeMatch(val recipe: Recipe, val have: List<RecipeItem>, val missi
     val required get() = have.size + missing.size
 }
 
+/** Grupos de ingredientes que se pueden excluir de un toque. */
+enum class DietGroup(val label: String, val ids: Set<String>) {
+    FISH("🐟 Sin pescado ni marisco", setOf("salmon", "merluza", "atun", "gambas")),
+    PORK("🐷 Sin cerdo", setOf("cerdo", "chorizo", "jamon", "jamon_york", "bacon")),
+    MEAT("🥦 Vegetariano", setOf("pollo", "muslo_pollo", "pavo", "ternera", "carne_picada", "cerdo", "chorizo", "jamon", "jamon_york", "bacon", "salmon", "merluza", "atun", "gambas")),
+    DAIRY("🥛 Sin lácteos", setOf("leche", "nata", "queso", "queso_fresco", "mozzarella", "yogur", "mantequilla")),
+    EGG("🥚 Sin huevo", setOf("huevo")),
+    GLUTEN("🌾 Sin gluten", setOf("pasta", "pan", "tortilla_trigo", "harina", "pan_rallado", "cuscus")),
+}
+
+/** Formas de ordenar las recetas. */
+enum class RecipeSort(val label: String) {
+    RECOMMENDED("⭐ Recomendado"),
+    KCAL_ASC("🔥 Menos calorías"),
+    KCAL_DESC("🔥 Más calorías"),
+    PROTEIN_DESC("💪 Más proteína"),
+    FAT_ASC("🧈 Menos grasa"),
+    CARBS_ASC("🍞 Menos hidratos"),
+    SUGAR_ASC("🍬 Menos azúcar"),
+    FIBER_DESC("🌾 Más fibra"),
+    TIME_ASC("⏱ Más rápidas");
+
+    /** null = mantener el orden recomendado. */
+    val key: ((RecipeMatch) -> Double)?
+        get() = when (this) {
+            RECOMMENDED -> null
+            KCAL_ASC -> { m -> m.nutrients.kcal }
+            KCAL_DESC -> { m -> -m.nutrients.kcal }
+            PROTEIN_DESC -> { m -> -m.nutrients.protein }
+            FAT_ASC -> { m -> m.nutrients.fat }
+            CARBS_ASC -> { m -> m.nutrients.carbs }
+            SUGAR_ASC -> { m -> m.nutrients.sugar }
+            FIBER_DESC -> { m -> -m.nutrients.fiber }
+            TIME_ASC -> { m -> m.recipe.minutes.toDouble() }
+        }
+
+    companion object {
+        fun of(name: String) = entries.firstOrNull { it.name == name } ?: RECOMMENDED
+    }
+}
+
+fun List<RecipeMatch>.sortedBy(sort: RecipeSort): List<RecipeMatch> = sort.key?.let { k -> sortedBy(k) } ?: this
+
 /** Recetas de una ración incluidas en la app (funcionan sin internet). */
 object RecipeBook {
     private val json = Json { ignoreUnknownKeys = true }
@@ -66,6 +109,9 @@ object RecipeBook {
     fun nutrients(r: Recipe): Nutrients = r.ingredients.fold(Nutrients()) { acc, it -> acc + ing(it.id).per100.forGrams(it.g) }
     fun grams(r: Recipe): Double = r.ingredients.sumOf { it.g }
 
+    /** La receta no lleva nada de lo que has excluido. */
+    fun allowed(r: Recipe, dislikes: Set<String>) = r.ingredients.none { it.id in dislikes }
+
     fun match(r: Recipe, mine: Set<String>): RecipeMatch {
         val req = r.ingredients.filterNot { ing(it.id).pantry }
         val (have, missing) = req.partition { coveredBy(it.id, mine) != null }
@@ -73,16 +119,16 @@ object RecipeBook {
     }
 
     /** Recetas ordenadas: primero las que puedes hacer ya, luego a las que les falta menos. */
-    fun suggest(mine: Set<String>, maxMissing: Int = 2): List<RecipeMatch> =
-        recipes.map { match(it, mine) }
+    fun suggest(mine: Set<String>, maxMissing: Int = 2, dislikes: Set<String> = emptySet()): List<RecipeMatch> =
+        recipes.filter { allowed(it, dislikes) }.map { match(it, mine) }
             .filter { it.have.isNotEmpty() && it.missing.size <= maxMissing }
             .sortedWith(compareBy<RecipeMatch> { it.missing.size }.thenByDescending { it.have.size }.thenBy { it.recipe.minutes })
 
     /** Ideas para la comida actual que encajen con las calorías que te quedan hoy. */
-    fun ideas(meal: Meal, kcalLeft: Double, dailyTarget: Double): List<RecipeMatch> {
+    fun ideas(meal: Meal, kcalLeft: Double, dailyTarget: Double, dislikes: Set<String> = emptySet()): List<RecipeMatch> {
         val tag = when (meal) { Meal.BREAKFAST -> "desayuno"; Meal.LUNCH -> "comida"; Meal.SNACK -> "merienda"; Meal.DINNER -> "cena" }
         val goal = minOf(kcalLeft.coerceAtLeast(200.0), dailyTarget * if (meal == Meal.SNACK || meal == Meal.BREAKFAST) 0.25 else 0.35)
-        return recipes.filter { tag in it.meals }.map { match(it, emptySet()) }
+        return recipes.filter { tag in it.meals && allowed(it, dislikes) }.map { match(it, emptySet()) }
             .sortedBy { kotlin.math.abs(it.nutrients.kcal - goal) - it.nutrients.protein * 2 }
     }
 
