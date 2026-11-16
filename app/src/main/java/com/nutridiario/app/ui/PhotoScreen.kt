@@ -127,7 +127,7 @@ fun PhotoScreen(nav: NavController) {
                         Text("No es ninguno: decir qué es y cuánto pesa")
                     }
                     Text(
-                        "El modelo de IA (EfficientNet-Lite, Google) va dentro de la app y funciona sin internet. Reconoce bien platos y alimentos comunes (pizza, hamburguesa, fruta, verdura, pasta…); para platos caseros complejos es más fiable decírselo.",
+                        "La IA va dentro de la app y funciona sin internet: un modelo de 101 platos (paella, tortilla, carbonara, churros, ensaladas, tartas…) y otro general para fruta, verdura y bebidas. Para platos caseros muy concretos es más fiable decírselo.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(bottom = 16.dp),
                     )

@@ -13,8 +13,8 @@ android {
         applicationId = "com.nutridiario.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.10"
+        versionCode = 12
+        versionName = "1.11"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             // ./gradlew assembleRelease -Pemulator  → incluye también x86_64 para el emulador de Android Studio
@@ -42,6 +42,7 @@ android {
             all {
                 it.systemProperty("robolectric.dependency.repo.url", "https://maven-central.storage-download.googleapis.com/maven2/")
                 it.maxHeapSize = "3g"
+                listOf("preprocess.in", "preprocess.out", "live", "ids").forEach { k -> System.getProperty(k)?.let { v -> it.systemProperty(k, v) } }
             }
         }
     }
@@ -75,6 +76,8 @@ dependencies {
 
     // IA local para reconocer alimentos en fotos
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    // Modelo de platos (Food-101, EfficientNet-B0) ejecutado con LiteRT
+    implementation("com.google.ai.edge.litert:litert:1.4.0")
 
     // Imágenes de productos
     implementation("io.coil-kt:coil-compose:2.7.0")

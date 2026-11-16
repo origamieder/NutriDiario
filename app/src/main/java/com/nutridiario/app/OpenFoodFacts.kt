@@ -13,14 +13,29 @@ object OpenFoodFacts {
         "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,image_front_url,quantity,product_quantity,product_quantity_unit"
 
     /** Open Food Facts a veces responde 503 cuando está saturado: se reintenta un par de veces. */
+    /** Open Food Facts permite ~10 búsquedas por minuto: se espacian solas. */
+    private const val SEARCH_GAP_MS = 6500L
+    private var lastSearchAt = 0L
+    private val searchLock = Any()
+
+    private fun paceSearch(url: String) {
+        if ("search.pl" !in url) return
+        synchronized(searchLock) {
+            val wait = lastSearchAt + SEARCH_GAP_MS - System.currentTimeMillis()
+            if (wait > 0) Thread.sleep(wait)
+            lastSearchAt = System.currentTimeMillis()
+        }
+    }
+
     private fun get(url: String): JSONObject {
+        paceSearch(url)
         var last: Exception? = null
         repeat(3) { attempt ->
             try {
                 return getOnce(url)
             } catch (e: ServerBusy) {
                 last = e
-                Thread.sleep(1500L * (attempt + 1))
+                Thread.sleep(if (e.message == "HTTP 429") 15000L else 1500L * (attempt + 1))
             }
         }
         throw Exception("Open Food Facts está saturado ahora mismo, inténtalo en un momento", last)

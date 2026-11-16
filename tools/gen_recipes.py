@@ -26,7 +26,7 @@ mozzarella|Mozzarella|🧀|mozzarella|280 22 2.2 1 20 13 0 1.2|0|mozzarella||
 yogur|Yogur natural|🥣|yogur,yogures,yogur natural,yogur griego|61 3.5 4.7 4.7 3.3 2.1 0 0.1|0|yogur natural|125|yogur
 mantequilla|Mantequilla|🧈|mantequilla|717 0.9 0.1 0.1 81 51 0 0.03|0|mantequilla||
 arroz|Arroz|🍚|arroz,arroz redondo,arroz largo,arroz basmati|354 7 78 0.2 0.6 0.2 1.3 0|0|arroz||
-pasta|Pasta|🍝|pasta,macarrones,espaguetis,espagueti,tallarines,fideos,penne,spaghetti,tiburones|357 12.5 72 3 1.5 0.3 3 0|0|pasta||
+pasta|Pasta|🍝|pasta,macarrones,espaguetis,espagueti,tallarines,fideos,penne,spaghetti,tiburones|357 12.5 72 3 1.5 0.3 3 0|0|macarrones||
 pan|Pan|🍞|pan,barra de pan,baguette,pan de barra|265 9 51 4.5 3.2 0.7 2.7 1.2|0|pan||
 tortilla_trigo|Tortillas de trigo|🌯|tortilla de trigo,tortillas de trigo,wrap,wraps,tortillas mexicanas,fajitas|310 8.5 52 3 7.5 3 2.5 1.2|0|tortillas trigo|30|tortilla
 patata|Patatas|🥔|patata,patatas,papa,papas|77 2 17 0.8 0.1 0 2.2 0|0|patatas||
