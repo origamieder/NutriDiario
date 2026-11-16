@@ -22,6 +22,18 @@ object Repository {
         _data.value = if (file.exists()) {
             runCatching { json.decodeFromString(AppData.serializer(), file.readText()) }.getOrDefault(AppData())
         } else AppData()
+        migrate()
+    }
+
+    /** Correcciones de datos guardados por versiones anteriores de la app. */
+    private fun migrate() {
+        val d = _data.value
+        if (d.dataVersion < 1) {
+            // v1.9 excluía el atún en lata con "Sin pescado ni marisco"; ahora el atún se permite
+            val oldFish = setOf("salmon", "merluza", "atun", "gambas")
+            val dislikes = if (d.dislikes.containsAll(oldFish)) d.dislikes - "atun" else d.dislikes
+            _data.value = d.copy(dislikes = dislikes, dataVersion = 1)
+        }
     }
 
     @Synchronized

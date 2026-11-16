@@ -68,6 +68,17 @@ class RecipeTest {
         assertEquals(byKcal.sorted(), byKcal)
         val byProt = all.sortedBy(RecipeSort.PROTEIN_DESC).map { it.nutrients.protein }
         assertEquals(byProt.sortedDescending(), byProt)
+        // el atún en lata sí se permite
+        assertTrue(RecipeBook.allowed(RecipeBook.recipes.first { it.name == "Macarrones con tomate y atún" }, noFish))
+        assertFalse(RecipeBook.allowed(RecipeBook.recipes.first { it.name == "Salmón al horno con patatas" }, noFish))
         println("Sin pescado se ocultan: " + RecipeBook.recipes.filterNot { RecipeBook.allowed(it, noFish) }.map { it.name })
+    }
+
+    @Test fun oldNoFishSettingKeepsTuna() {
+        val f = java.io.File(java.nio.file.Files.createTempDirectory("mig").toFile(), "d.json")
+        f.writeText("""{"dislikes":["salmon","merluza","atun","gambas","champinones"]}""")
+        Repository.initFile(f)
+        assertEquals(listOf("salmon", "merluza", "gambas", "champinones"), Repository.data.value.dislikes)
+        assertEquals(1, Repository.data.value.dataVersion)
     }
 }

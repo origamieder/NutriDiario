@@ -134,6 +134,8 @@ data class AppData(
     val dislikes: List<String> = emptyList(),
     /** Orden elegido para las recetas (nombre de RecipeSort). */
     val recipeSort: String = "RECOMMENDED",
+    /** Versión de las correcciones automáticas de datos ya aplicadas. */
+    val dataVersion: Int = 0,
 )
 
 @Serializable

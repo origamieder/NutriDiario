@@ -34,7 +34,8 @@ data class RecipeMatch(val recipe: Recipe, val have: List<RecipeItem>, val missi
 
 /** Grupos de ingredientes que se pueden excluir de un toque. */
 enum class DietGroup(val label: String, val ids: Set<String>) {
-    FISH("🐟 Sin pescado ni marisco", setOf("salmon", "merluza", "atun", "gambas")),
+    /** Pescado como plato principal y marisco. El atún en lata no cuenta. */
+    FISH("🐟 Sin pescado ni marisco (atún en lata sí)", setOf("salmon", "merluza", "gambas")),
     PORK("🐷 Sin cerdo", setOf("cerdo", "chorizo", "jamon", "jamon_york", "bacon")),
     MEAT("🥦 Vegetariano", setOf("pollo", "muslo_pollo", "pavo", "ternera", "carne_picada", "cerdo", "chorizo", "jamon", "jamon_york", "bacon", "salmon", "merluza", "atun", "gambas")),
     DAIRY("🥛 Sin lácteos", setOf("leche", "nata", "queso", "queso_fresco", "mozzarella", "yogur", "mantequilla")),
