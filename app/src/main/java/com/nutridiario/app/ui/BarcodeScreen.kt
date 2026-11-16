@@ -205,17 +205,17 @@ fun BarcodeScreen(nav: NavController) {
             text = {
                 Text(
                     if (partial.name.isNotBlank())
-                        "«${partial.name}» está en Open Food Facts pero sin valores nutricionales. Cópialos del envoltorio una vez y se guardará en Mis alimentos: la próxima vez que lo escanees se añadirá directamente."
+                        "«${partial.name}» está en Open Food Facts pero sin valores nutricionales. Haz una foto a la tabla nutricional y los relleno yo. Se guardará y la próxima vez que lo escanees se añadirá directamente."
                     else
-                        "El código ${partial.barcode} no está en Open Food Facts. Cópialo del envoltorio una vez y se guardará en Mis alimentos para la próxima vez."
+                        "El código ${partial.barcode} no está en Open Food Facts. Haz una foto a la tabla nutricional y relleno los valores yo; se guardará para la próxima vez."
                 )
             },
             confirmButton = {
                 Button(onClick = {
                     notFound = null
-                    Session.editorFood = partial; Session.editorIsMine = false
+                    Session.editorFood = partial; Session.editorIsMine = false; Session.editorAutoLabel = true
                     nav.navigate("custom")
-                }) { Text("Añadir desde el envoltorio") }
+                }) { Text("📸 Foto a la etiqueta") }
             },
             dismissButton = {
                 TextButton(onClick = { notFound = null; nav.navigate("search") }) { Text("Buscar por nombre") }

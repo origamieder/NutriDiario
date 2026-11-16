@@ -14,6 +14,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -77,6 +82,51 @@ fun CustomFoodScreen(nav: NavController) {
         else camPerm.launch(Manifest.permission.CAMERA)
     }
 
+    // --- Lectura automática de la tabla nutricional con la cámara (OCR en el móvil)
+    val autoLabel = remember { Session.editorAutoLabel.also { Session.editorAutoLabel = false } }
+    var reading by remember { mutableStateOf(false) }
+    var labelMsg by remember { mutableStateOf<String?>(null) }
+    var labelOk by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val labelUri = remember {
+        val dir = java.io.File(ctx.cacheDir, "photos").apply { mkdirs() }
+        FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", java.io.File(dir, "etiqueta.jpg"))
+    }
+    fun fv(v: Double) = fmt(v, if (v % 1.0 == 0.0) 0 else if (v < 1) 2 else 1)
+    fun applyLabel(l: LabelData) {
+        val names = mutableListOf<String>()
+        fun put(k: String, label: String, v: Double?) { if (v != null) fields[k] = fv(v) else names += label }
+        put("kcal", "energía", l.kcal); put("fat", "grasas", l.fat); put("sat", "saturadas", l.satFat)
+        put("carbs", "hidratos", l.carbs); put("sugar", "azúcares", l.sugar); put("fiber", "fibra", l.fiber)
+        put("protein", "proteínas", l.protein); put("salt", "sal", l.salt)
+        perServing = false
+        unit = l.unit
+        l.packageAmount?.let { if (pkg.isBlank()) pkg = fv(it) }
+        l.servingAmount?.let { if (serving.isBlank()) serving = fv(it) }
+        labelOk = l.nutrientCount >= 4
+        labelMsg = when {
+            l.nutrientCount == 0 -> "No he podido leer la tabla. Prueba con la foto más cerca, recta y con buena luz."
+            names.isEmpty() -> "✨ He leído los 8 valores de la etiqueta. Échales un vistazo por si acaso."
+            else -> "✨ He leído ${l.nutrientCount} de 8 valores. Falta: ${names.joinToString()}. Revísalos."
+        }
+    }
+    fun readLabel(uri: android.net.Uri) {
+        reading = true; labelMsg = null
+        scope.launch {
+            try { applyLabel(LabelReader.read(ctx, uri)) }
+            catch (e: Exception) { labelMsg = "No se pudo leer la foto: ${e.message}"; labelOk = false }
+            finally { reading = false }
+        }
+    }
+    val takeLabel = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) readLabel(labelUri) }
+    val pickLabel = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let { u -> readLabel(u) } }
+    val labelPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) takeLabel.launch(labelUri) }
+    fun shootLabel() {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) takeLabel.launch(labelUri)
+        else labelPerm.launch(Manifest.permission.CAMERA)
+    }
+    LaunchedEffect(Unit) { if (autoLabel) shootLabel() }
+
     fun num(s: String?) = s?.replace(',', '.')?.toDoubleOrNull()
     val pkgG = num(pkg)?.takeIf { it > 0 }
     val servingG = num(serving)?.takeIf { it > 0 }
@@ -126,14 +176,38 @@ fun CustomFoodScreen(nav: NavController) {
             if (isMine) IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, "Borrar") }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Row(
-                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.primaryContainer).padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            // Botón grande: leer la etiqueta automáticamente
+            Column(
+                Modifier.fillMaxWidth()
+                    .shadow(8.dp, MaterialTheme.shapes.large, spotColor = ProteinC.copy(alpha = 0.6f))
+                    .clip(MaterialTheme.shapes.large)
+                    .background(Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6366F1))))
+                    .clickable(enabled = !reading) { shootLabel() }
+                    .padding(16.dp),
             ) {
-                Text("📦", fontSize = 26.sp); Spacer(Modifier.width(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(48.dp).clip(MaterialTheme.shapes.small).background(Color.White.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
+                        if (reading) CircularProgressIndicator(Modifier.size(26.dp), color = Color.White, strokeWidth = 3.dp)
+                        else Text("📸", fontSize = 26.sp)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(if (reading) "Leyendo la etiqueta…" else "Rellenar con una foto", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Text("Haz una foto a la tabla nutricional y relleno los valores yo", color = Color.White.copy(alpha = 0.9f), style = Caption)
+                    }
+                }
+            }
+            TextButton(onClick = { pickLabel.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !reading) {
+                Text("…o elegir una foto de la galería")
+            }
+            labelMsg?.let { msg ->
                 Text(
-                    "Copia los datos del envoltorio. Se guardará en Mis alimentos y la próxima vez lo encontrarás buscándolo o escaneándolo.",
-                    style = Caption, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    msg,
+                    color = if (labelOk) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
+                        .background(if (labelOk) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(12.dp),
                 )
             }
             Spacer(Modifier.height(12.dp))

@@ -13,6 +13,7 @@ App Android (Kotlin + Jetpack Compose) para registrar lo que comes y calcular ca
 - **Código de barras**: cámara + ML Kit (modelo incluido en la app) → datos de Open Food Facts (requiere internet).
   Con «Añadir al instante» se apunta solo con la cantidad del envase y puedes escanear varios seguidos.
 - **Mis alimentos**: productos guardados con los datos del envoltorio (y su código de barras, funciona sin internet).
+  Los valores se rellenan solos haciendo una foto a la tabla nutricional (OCR de ML Kit en el móvil).
 - **Búsqueda**: base local de unos 160 alimentos genéricos (sin conexión) + productos de Open Food Facts (online).
 - **Foto con IA local**: modelo EfficientNet-Lite2 (Google/MediaPipe) dentro del APK, funciona sin internet.
   Reconoce unas 50 comidas comunes (pizza, hamburguesa, fruta, verdura, pasta carbonara, helado…); tú confirmas y ajustas los gramos.

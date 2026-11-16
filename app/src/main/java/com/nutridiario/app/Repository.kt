@@ -104,4 +104,6 @@ object Session {
     var editorFood: FoodItem? = null
     /** true si editorFood ya está guardado en "Mis alimentos" (se reemplaza al guardar). */
     var editorIsMine: Boolean = false
+    /** Abrir el editor directamente con la cámara para leer la tabla nutricional. */
+    var editorAutoLabel: Boolean = false
 }

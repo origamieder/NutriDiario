@@ -13,8 +13,8 @@ android {
         applicationId = "com.nutridiario.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             // ./gradlew assembleRelease -Pemulator  → incluye también x86_64 para el emulador de Android Studio
@@ -70,6 +70,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    // Lectura de texto de la tabla nutricional (modelo incluido, sin internet)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 
     // IA local para reconocer alimentos en fotos
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
