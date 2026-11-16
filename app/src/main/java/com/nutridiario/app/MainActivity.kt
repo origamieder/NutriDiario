@@ -94,6 +94,7 @@ fun AppRoot() {
             composable("search") { SearchScreen(nav) }
             composable("manual") { ManualScreen(nav) }
             composable("custom") { CustomFoodScreen(nav) }
+            composable("myfoods") { MyFoodsScreen(nav) }
             composable("detail") { FoodDetailScreen(nav) }
         }
     }

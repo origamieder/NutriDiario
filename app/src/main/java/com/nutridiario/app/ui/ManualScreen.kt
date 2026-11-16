@@ -80,8 +80,9 @@ fun ManualScreen(nav: NavController) {
                         Session.manualText = parsed.query; Session.pendingGrams = parsed.grams; nav.navigate("search")
                     }, enabled = parsed.query.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Buscar «${parsed.query}» online") }
                     OutlinedButton(onClick = {
-                        Session.manualText = parsed.query; Session.pendingGrams = parsed.grams; nav.navigate("custom")
-                    }, modifier = Modifier.fillMaxWidth()) { Text("Crear alimento con mis propios valores") }
+                        Session.manualText = parsed.query; Session.pendingGrams = parsed.grams
+                        Session.editorFood = null; Session.editorIsMine = false; nav.navigate("custom")
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Añadirlo a Mis alimentos (datos del envoltorio)") }
                 }
             }
         }

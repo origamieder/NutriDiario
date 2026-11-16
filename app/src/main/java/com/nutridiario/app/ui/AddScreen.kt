@@ -37,8 +37,13 @@ fun AddScreen(nav: NavController) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = { start(nav, "custom") }, modifier = Modifier.fillMaxWidth()) {
-                Text("Crear alimento con sus valores (etiqueta)")
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { start(nav, "custom") }, modifier = Modifier.weight(1f)) {
+                    Text("➕ Nuevo alimento\n(datos del envoltorio)", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
+                OutlinedButton(onClick = { start(nav, "myfoods") }, modifier = Modifier.weight(1f).height(IntrinsicSize.Max)) {
+                    Text("📒 Mis alimentos\n(${Repository.data.value.customFoods.size} guardados)", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
             }
             if (recent.isNotEmpty()) SectionTitle("Recientes", Modifier.padding(top = 12.dp))
         }
@@ -57,6 +62,8 @@ private fun start(nav: NavController, route: String) {
     Session.editingEntry = null
     Session.pendingGrams = null
     Session.manualText = ""
+    Session.editorFood = null
+    Session.editorIsMine = false
     nav.navigate(route)
 }
 

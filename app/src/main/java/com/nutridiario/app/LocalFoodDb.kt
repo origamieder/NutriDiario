@@ -45,7 +45,9 @@ object LocalFoodDb {
         val q = normalize(query)
         if (q.isBlank()) return emptyList()
         val tokens = q.split(" ").filter { it.length > 1 && it !in STOP }
-        val custom = Repository.data.value.customFoods.map { LocalFood(it, listOf(normalize(it.name))) }
+        val custom = Repository.data.value.customFoods.map { f ->
+            LocalFood(f, listOfNotNull(normalize(f.name), f.brand?.let { normalize("${f.name} ${it}") }, f.brand?.let { normalize(it) }))
+        }
         return (custom + foods).mapNotNull { f ->
             var best = 0
             for (k in f.keys) {

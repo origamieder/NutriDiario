@@ -41,12 +41,15 @@ data class FoodItem(
     val packageG: Double? = null,
     /** "g" o "ml" */
     val unit: String = "g",
+    /** Cantidad por defecto elegida por ti en "Mis alimentos" (tiene prioridad). */
+    val defaultG: Double? = null,
 ) {
     /**
      * Cantidad que se propone automáticamente: el envase entero si es individual
      * (lata, botellín, paquete de galletas…), si no la ración indicada, si no 100.
      */
     fun defaultAmount(): Double = when {
+        defaultG != null -> defaultG
         packageG != null && packageG <= (if (unit == "ml") MAX_SINGLE_DRINK else MAX_SINGLE_PACKAGE) -> packageG
         portionG != null -> portionG
         else -> 100.0

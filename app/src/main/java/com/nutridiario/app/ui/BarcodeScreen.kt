@@ -32,7 +32,10 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.nutridiario.app.FoodItem
+import com.nutridiario.app.Nutrients
 import com.nutridiario.app.OpenFoodFacts
+import com.nutridiario.app.Repository
 import com.nutridiario.app.Session
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -50,7 +53,7 @@ fun BarcodeScreen(nav: NavController) {
     var code by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var notFound by remember { mutableStateOf<String?>(null) }
+    var notFound by remember { mutableStateOf<FoodItem?>(null) }
     var manual by remember { mutableStateOf("") }
 
     fun lookup(c: String) {
@@ -58,12 +61,19 @@ fun BarcodeScreen(nav: NavController) {
         code = c; loading = true; error = null
         scope.launch {
             try {
-                val food = OpenFoodFacts.byBarcode(c)
-                if (food != null) {
+                fun open(food: FoodItem) {
                     Session.pendingFood = food
                     Session.pendingGrams = null
                     nav.navigate("detail") { popUpTo("barcode") { inclusive = true } }
-                } else notFound = c
+                }
+                val mine = Repository.customByBarcode(c)
+                if (mine != null) { open(mine); return@launch }
+                when (val r = OpenFoodFacts.byBarcode(c)) {
+                    is OpenFoodFacts.BarcodeResult.Found -> open(r.food)
+                    is OpenFoodFacts.BarcodeResult.Incomplete -> notFound = r.partial
+                    OpenFoodFacts.BarcodeResult.NotFound ->
+                        notFound = FoodItem(name = "", per100 = Nutrients(), source = "Mis alimentos", barcode = c)
+                }
             } catch (e: Exception) {
                 error = "No se pudo consultar el producto. ¿Tienes internet?\n${e.message ?: ""}"
             } finally {
@@ -113,15 +123,24 @@ fun BarcodeScreen(nav: NavController) {
             title = { Text("Error") }, text = { Text(msg) },
         )
     }
-    notFound?.let { c ->
+    notFound?.let { partial ->
         AlertDialog(
             onDismissRequest = { notFound = null },
-            title = { Text("Producto no encontrado") },
-            text = { Text("El código $c no está en Open Food Facts. Puedes crearlo tú copiando los valores de la etiqueta nutricional, o buscarlo por nombre.") },
+            title = { Text(if (partial.name.isNotBlank()) "Faltan los valores nutricionales" else "Producto no encontrado") },
+            text = {
+                Text(
+                    if (partial.name.isNotBlank())
+                        "«${partial.name}» está en Open Food Facts pero sin valores nutricionales. Cópialos del envoltorio una vez y se guardará en Mis alimentos: la próxima vez que lo escanees saldrá directamente."
+                    else
+                        "El código ${partial.barcode} no está en Open Food Facts. Cópialo del envoltorio una vez y se guardará en Mis alimentos para la próxima vez."
+                )
+            },
             confirmButton = {
-                TextButton(onClick = { notFound = null; Session.manualText = c; nav.navigate("custom") { popUpTo("barcode") { inclusive = true } } }) {
-                    Text("Crear producto")
-                }
+                TextButton(onClick = {
+                    notFound = null
+                    Session.editorFood = partial; Session.editorIsMine = false
+                    nav.navigate("custom") { popUpTo("barcode") { inclusive = true } }
+                }) { Text("Añadir desde el envoltorio") }
             },
             dismissButton = {
                 TextButton(onClick = { notFound = null; nav.navigate("search") { popUpTo("barcode") { inclusive = true } } }) { Text("Buscar por nombre") }

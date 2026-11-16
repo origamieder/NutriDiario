@@ -15,8 +15,10 @@ object Repository {
     private val _data = MutableStateFlow(AppData())
     val data: StateFlow<AppData> = _data.asStateFlow()
 
-    fun init(context: Context) {
-        file = File(context.filesDir, "nutridiario.json")
+    fun init(context: Context) = initFile(File(context.filesDir, "nutridiario.json"))
+
+    fun initFile(f: File) {
+        file = f
         if (file.exists()) {
             runCatching { _data.value = json.decodeFromString(AppData.serializer(), file.readText()) }
         }
@@ -56,9 +58,21 @@ object Repository {
 
     fun deleteEntry(id: Long) = update { d -> d.copy(entries = d.entries.filterNot { it.id == id }) }
 
-    fun addCustomFood(f: FoodItem) = update { d ->
-        d.copy(customFoods = d.customFoods.filterNot { it.name.equals(f.name, true) } + f)
+    fun addCustomFood(f: FoodItem) = saveCustomFood(null, f)
+
+    /** Guarda (o reemplaza) un alimento en "Mis alimentos". */
+    fun saveCustomFood(original: FoodItem?, f: FoodItem) = update { d ->
+        val rest = d.customFoods.filterNot { it == original || sameProduct(it, f) }
+        d.copy(customFoods = (rest + f).sortedBy { it.name.lowercase() })
     }
+
+    fun deleteCustomFood(f: FoodItem) = update { d -> d.copy(customFoods = d.customFoods.filterNot { it == f }) }
+
+    fun customByBarcode(code: String): FoodItem? = _data.value.customFoods.firstOrNull { it.barcode == code }
+
+    private fun sameProduct(a: FoodItem, b: FoodItem) =
+        if (a.barcode != null && b.barcode != null) a.barcode == b.barcode
+        else a.name.equals(b.name, true) && (a.brand ?: "").equals(b.brand ?: "", true)
 
     /** Cantidad que usaste la última vez con este mismo producto (por código de barras o nombre+marca). */
     fun lastAmountFor(food: FoodItem): Double? = _data.value.entries
@@ -84,4 +98,8 @@ object Session {
     var pendingGrams: Double? = null
     var editingEntry: FoodEntry? = null
     var manualText: String = ""
+    /** Alimento con el que se abre el editor de "Mis alimentos" (para corregir/editar). */
+    var editorFood: FoodItem? = null
+    /** true si editorFood ya está guardado en "Mis alimentos" (se reemplaza al guardar). */
+    var editorIsMine: Boolean = false
 }

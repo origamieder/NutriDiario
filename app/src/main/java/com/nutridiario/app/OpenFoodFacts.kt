@@ -43,11 +43,27 @@ object OpenFoodFacts {
         }
     }
 
-    /** Devuelve null si el producto no existe en la base de datos. */
-    suspend fun byBarcode(code: String): FoodItem? = withContext(Dispatchers.IO) {
+    sealed class BarcodeResult {
+        data class Found(val food: FoodItem) : BarcodeResult()
+        /** Existe pero le faltan los valores nutricionales: se usa para rellenar el editor. */
+        data class Incomplete(val partial: FoodItem) : BarcodeResult()
+        data object NotFound : BarcodeResult()
+    }
+
+    suspend fun byBarcode(code: String): BarcodeResult = withContext(Dispatchers.IO) {
         val j = get("https://world.openfoodfacts.org/api/v2/product/$code.json?fields=$FIELDS")
-        if (j.optInt("status", 0) != 1) return@withContext null
-        parse(j.getJSONObject("product"), "Código de barras")?.copy(barcode = code)
+        if (j.optInt("status", 0) != 1) return@withContext BarcodeResult.NotFound
+        val p = j.getJSONObject("product")
+        parse(p, "Código de barras")?.let { return@withContext BarcodeResult.Found(it.copy(barcode = code)) }
+        val pkg = PackageQuantity.parse(p.optString("quantity"), null, null)
+        BarcodeResult.Incomplete(
+            FoodItem(
+                name = listOf("product_name_es", "product_name").map { p.optString(it).trim() }.firstOrNull { it.isNotBlank() } ?: "",
+                brand = p.optString("brands").split(",").firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
+                per100 = Nutrients(), source = "Mis alimentos", barcode = code,
+                packageG = pkg?.amount, unit = pkg?.unit ?: "g",
+            )
+        )
     }
 
     suspend fun search(query: String): List<FoodItem> = withContext(Dispatchers.IO) {

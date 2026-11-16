@@ -28,7 +28,9 @@ fun FoodDetailScreen(nav: NavController) {
     if (food == null) { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val editing = Session.editingEntry
     val lastAmount = remember { if (editing == null) Repository.lastAmountFor(food) else null }
-    var gramsText by remember { mutableStateOf(fmt(Session.pendingGrams ?: lastAmount ?: food.defaultAmount(), 0)) }
+    var gramsText by remember {
+        mutableStateOf(fmt(Session.pendingGrams ?: food.defaultG ?: lastAmount ?: food.defaultAmount(), 0))
+    }
     var meal by remember { mutableStateOf(editing?.meal ?: Meal.byTime(LocalTime.now().hour)) }
     val grams = gramsText.replace(',', '.').toDoubleOrNull() ?: 0.0
     val n = food.per100.forGrams(grams)
@@ -55,6 +57,7 @@ fun FoodDetailScreen(nav: NavController) {
                 label = {
                     Text(
                         when {
+                            Session.pendingGrams == null && food.defaultG != null -> "Cantidad (tu cantidad por defecto)"
                             Session.pendingGrams == null && lastAmount != null -> "Cantidad (la misma que la última vez)"
                             food.packageG != null && food.defaultAmount() == food.packageG -> "Cantidad (envase entero)"
                             else -> "Cantidad (aproximada)"
@@ -104,7 +107,17 @@ fun FoodDetailScreen(nav: NavController) {
             NutrientTable(n, "Valores para ${fmt(grams, 0)} ${food.unit}")
             Spacer(Modifier.height(12.dp))
             NutrientTable(food.per100, "Valores por 100 ${food.unit}")
-            Spacer(Modifier.height(16.dp))
+            val mine = food.source == "Mis alimentos"
+            TextButton(
+                onClick = {
+                    Session.editorFood = food; Session.editorIsMine = mine; Session.manualText = ""
+                    nav.navigate("custom")
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (mine) "✏️ Editar en Mis alimentos" else "✏️ Guardar en Mis alimentos / corregir datos (peso del envase, valores…)")
+            }
+            Spacer(Modifier.height(8.dp))
         }
         Button(
             onClick = {
