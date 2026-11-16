@@ -15,7 +15,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // ./gradlew assembleRelease -Pemulator  → incluye también x86_64 para el emulador de Android Studio
+            if (project.hasProperty("emulator")) abiFilters += listOf("x86_64")
+        }
     }
 
     buildTypes {
