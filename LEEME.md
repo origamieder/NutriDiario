@@ -1,5 +1,7 @@
 # NutriDiario
 
+**Descargar la app:** [apk/NutriDiario.apk](https://github.com/origamieder/NutriDiario/raw/main/apk/NutriDiario.apk) (Android 8 o superior; acepta instalar apps de origen desconocido).
+
 App Android (Kotlin + Jetpack Compose) para registrar lo que comes y calcular calorías y nutrientes.
 
 ## Formas de añadir comida
