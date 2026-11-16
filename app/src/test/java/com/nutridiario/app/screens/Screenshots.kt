@@ -79,6 +79,26 @@ class Screenshots {
         Repository.saveCustomFood(null, FoodItem("Yogur proteico", "Danone", Nutrients(60.0, 10.0, 4.0, 4.0, 0.2), null, null, "Mis alimentos", packageG = 160.0))
         shot("7_mis_alimentos") { MyFoodsScreen(rememberNavController()) }
     }
+    private fun noNetworkPhotos() =
+        RecipeBook.ingredients.keys.forEach { Repository.cacheIngredientImage(it, IngredientImage(null, null, false)) }
+
+    @Config(qualifiers = "w400dp-h2600dp-xhdpi")
+    @Test fun recipesTall() {
+        noNetworkPhotos()
+        Repository.setPantry(listOf("pollo", "arroz", "pimiento", "cebolla", "tomate", "huevo", "patata"))
+        shot("8b_recetas_resultados") { RecipesScreen(rememberNavController()) }
+    }
+    @Test fun recipes() {
+        noNetworkPhotos()
+        Repository.setPantry(listOf("pollo", "arroz", "pimiento", "cebolla", "tomate", "huevo", "patata"))
+        shot("8_recetas") { RecipesScreen(rememberNavController()) }
+    }
+    @Test fun recipeDetail() {
+        noNetworkPhotos()
+        Repository.setPantry(listOf("huevo", "patata"))
+        Session.selectedRecipe = RecipeBook.recipes.first { it.name == "Tortilla de patatas" }
+        shot("9_receta") { RecipeDetailScreen(rememberNavController()) }
+    }
     @Test fun editor() {
         Session.editorFood = null; Session.manualText = ""
         shot("6_nuevo_alimento") { CustomFoodScreen(rememberNavController()) }

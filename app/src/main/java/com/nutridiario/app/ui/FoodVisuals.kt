@@ -59,7 +59,7 @@ private val emojiRules: List<Pair<List<String>, String>> = listOf(
     listOf("zanahoria") to "🥕",
     listOf("maiz") to "🌽",
     listOf("pepino", "calabacin") to "🥒",
-    listOf("pimiento") to "🫑",
+    listOf("pimiento") to "🌶️",
     listOf("berenjena") to "🍆",
     listOf("champinon", "seta") to "🍄",
     listOf("patata", "pure") to "🥔",
@@ -79,9 +79,9 @@ private val emojiRules: List<Pair<List<String>, String>> = listOf(
     listOf("cereza", "picota") to "🍒",
     listOf("kiwi") to "🥝",
     listOf("mango") to "🥭",
-    listOf("arandano") to "🫐",
+    listOf("arandano") to "🍇",
     listOf("almendra", "nuez", "nueces", "cacahuete", "frutos secos") to "🥜",
-    listOf("aceituna", "oliva") to "🫒",
+    listOf("aceituna", "oliva") to "🥗",
     listOf("avena", "cereales", "muesli", "granola") to "🥣",
 )
 

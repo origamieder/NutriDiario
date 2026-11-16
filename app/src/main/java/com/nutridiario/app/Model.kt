@@ -126,4 +126,11 @@ data class AppData(
     val entries: List<FoodEntry> = emptyList(),
     val weights: List<WeightEntry> = emptyList(),
     val customFoods: List<FoodItem> = emptyList(),
+    /** Ingredientes que tienes en casa (ids de RecipeBook). */
+    val pantry: List<String> = emptyList(),
+    /** Foto encontrada para cada ingrediente (se guarda para no buscarla otra vez). */
+    val ingredientImages: Map<String, IngredientImage> = emptyMap(),
 )
+
+@Serializable
+data class IngredientImage(val url: String?, val title: String?, val eroski: Boolean)

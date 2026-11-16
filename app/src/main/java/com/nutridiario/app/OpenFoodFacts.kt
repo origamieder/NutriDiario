@@ -105,6 +105,35 @@ object OpenFoodFacts {
         out.distinctBy { it.url }
     }
 
+    /**
+     * Foto de un producto para un ingrediente. Busca primero productos de la marca Eroski y, si no hay,
+     * cualquier producto. Elige el que mejor encaja con el nombre (p. ej. "Arroz vaporizado" antes que
+     * "Tortitas de arroz").
+     */
+    suspend fun ingredientImage(term: String, brand: String = "eroski"): IngredientImage? = withContext(Dispatchers.IO) {
+        val q = URLEncoder.encode(term, "UTF-8")
+        val base = "https://es.openfoodfacts.org/cgi/search.pl?search_terms=$q&search_simple=1&action=process&json=1" +
+            "&page_size=20&sort_by=unique_scans_n&fields=product_name,product_name_es,brands,image_front_url,image_front_small_url"
+        for (withBrand in listOf(true, false)) {
+            val url = if (withBrand) "$base&tagtype_0=brands&tag_contains_0=contains&tag_0=$brand" else base
+            val arr = get(url).optJSONArray("products") ?: continue
+            val words = LocalFoodDb.normalize(term).split(" ").filter { it.length > 2 }
+            var best: Pair<Double, IngredientImage>? = null
+            for (i in 0 until arr.length()) {
+                val p = arr.getJSONObject(i)
+                val img = imageOf(p) ?: continue
+                val name = listOf("product_name_es", "product_name").map { p.optString(it) }.firstOrNull { it.isNotBlank() } ?: continue
+                val n = LocalFoodDb.normalize(name)
+                val hits = words.count { w -> n.contains(w.removeSuffix("s")) }
+                if (hits == 0) continue
+                val score = hits * 3.0 + (if (words.isNotEmpty() && n.startsWith(words[0].removeSuffix("s"))) 3 else 0) - n.length / 40.0 - i * 0.05
+                if (best == null || score > best.first) best = score to IngredientImage(img, name, withBrand)
+            }
+            best?.let { return@withContext it.second }
+        }
+        null
+    }
+
     internal fun parse(p: JSONObject, source: String): FoodItem? {
         val n = p.optJSONObject("nutriments") ?: return null
         fun v(key: String): Double = n.optDouble("${key}_100g", Double.NaN).let { if (it.isNaN()) 0.0 else it }

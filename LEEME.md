@@ -20,6 +20,13 @@ App Android (Kotlin + Jetpack Compose) para registrar lo que comes y calcular ca
 - **Decírselo**: texto o voz, p. ej. "150 g de pollo", "2 huevos", "un vaso de leche".
 - **Crear alimento**: copiando los valores de la etiqueta nutricional (por 100 g o por ración).
 
+## Recetas
+Dime qué ingredientes tienes (escrito, por voz o tocando) y propone platos de **1 ración**:
+los que puedes hacer ya y los que casi tienes. 48 recetas caseras con calorías y macros calculados
+por ingrediente, pasos, lista de la compra y, para cada ingrediente, foto de producto de marca
+Eroski (Open Food Facts) y botón para buscarlo en supermercado.eroski.es. Las recetas se generan con
+`tools/gen_recipes.py` a partir de `tools/recipes.txt`.
+
 ## Perfil
 Sexo, edad, altura, peso, actividad y objetivo → IMC, rango de peso saludable, peso ideal (Devine, Robinson,
 Miller, Hamwi, IMC 22), grasa corporal estimada, metabolismo basal (Mifflin-St Jeor), gasto diario,

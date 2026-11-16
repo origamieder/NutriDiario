@@ -82,6 +82,11 @@ object Repository {
         }
         .maxByOrNull { it.timestamp }?.grams
 
+    fun setPantry(ids: List<String>) = update { d -> d.copy(pantry = ids.distinct()) }
+
+    fun cacheIngredientImage(id: String, img: IngredientImage) =
+        update { d -> d.copy(ingredientImages = d.ingredientImages + (id to img)) }
+
     fun entriesFor(date: String) = _data.value.entries.filter { it.date == date }
 
     /** Alimentos usados recientemente (sin repetir), para añadirlos rápido. */
@@ -106,4 +111,5 @@ object Session {
     var editorIsMine: Boolean = false
     /** Abrir el editor directamente con la cámara para leer la tabla nutricional. */
     var editorAutoLabel: Boolean = false
+    var selectedRecipe: Recipe? = null
 }

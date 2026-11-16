@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -39,6 +40,7 @@ private data class Tab(val route: String, val label: String, val icon: ImageVect
 private val tabs = listOf(
     Tab("today", "Hoy", Icons.Filled.Home),
     Tab("add", "Añadir", Icons.Filled.Add),
+    Tab("recipes", "Recetas", Icons.AutoMirrored.Filled.List),
     Tab("progress", "Progreso", Icons.Filled.DateRange),
     Tab("profile", "Perfil", Icons.Filled.Person),
 )
@@ -84,6 +86,9 @@ fun AppRoot() {
             composable("manual") { ManualScreen(nav) }
             composable("custom") { CustomFoodScreen(nav) }
             composable("myfoods") { MyFoodsScreen(nav) }
+            composable("recipes") { RecipesScreen(nav) }
+            composable("recipe") { RecipeDetailScreen(nav) }
+            composable("allrecipes") { AllRecipesScreen(nav) }
             composable("detail") { FoodDetailScreen(nav) }
         }
     }

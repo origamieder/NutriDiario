@@ -7,5 +7,6 @@ class NutriApp : Application() {
         super.onCreate()
         Repository.init(this)
         LocalFoodDb.init(this)
+        RecipeBook.init(this)
     }
 }
