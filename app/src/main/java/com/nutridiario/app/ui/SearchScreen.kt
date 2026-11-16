@@ -49,6 +49,7 @@ fun SearchScreen(nav: NavController) {
             value = query, onValueChange = { query = it; online = null },
             label = { Text("Ej: yogur griego, Cola Cao, galletas…") },
             singleLine = true,
+            shape = MaterialTheme.shapes.large,
             trailingIcon = { IconButton(onClick = { searchOnline() }) { Icon(Icons.Filled.Search, "Buscar") } },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { searchOnline() }),
@@ -71,14 +72,7 @@ fun SearchScreen(nav: NavController) {
                 if (online?.isEmpty() == true) Text("Sin resultados online", Modifier.padding(horizontal = 16.dp))
             }
             items(online.orEmpty()) { f ->
-                ListItem(
-                    leadingContent = { f.imageUrl?.let { AsyncImage(it, null, Modifier.size(48.dp)) } },
-                    headlineContent = { Text(f.name) },
-                    supportingContent = {
-                        Text(listOfNotNull(f.brand, f.packageG?.let { "${fmt(it, 0)} ${f.unit}" }, "${fmt(f.per100.kcal, 0)} kcal/100 ${f.unit}").joinToString(" · "))
-                    },
-                    modifier = Modifier.clickableNoRipple { pick(f) },
-                )
+                FoodRow(f, { pick(f) })
             }
         }
     }

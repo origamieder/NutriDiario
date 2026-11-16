@@ -98,6 +98,8 @@ object Session {
     var pendingGrams: Double? = null
     var editingEntry: FoodEntry? = null
     var manualText: String = ""
+    /** Comida a la que se añadirá (si se pulsó el "+" de una comida concreta). */
+    var preferredMeal: Meal? = null
     /** Alimento con el que se abre el editor de "Mis alimentos" (para corregir/editar). */
     var editorFood: FoodItem? = null
     /** true si editorFood ya está guardado en "Mis alimentos" (se reemplaza al guardar). */

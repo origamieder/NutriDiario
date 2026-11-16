@@ -42,6 +42,7 @@ fun ManualScreen(nav: NavController) {
                 OutlinedTextField(
                     value = text, onValueChange = { text = it },
                     label = { Text("Ej: 150 g de pollo, 2 huevos, un vaso de leche") },
+                    shape = MaterialTheme.shapes.large,
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
@@ -63,14 +64,15 @@ fun ManualScreen(nav: NavController) {
         LazyColumn(Modifier.weight(1f)) {
             items(results) { f ->
                 val g = gramsFor(f) ?: f.portionG ?: 100.0
-                ListItem(
-                    headlineContent = { Text(f.name, fontWeight = FontWeight.Medium) },
-                    supportingContent = { Text("${fmt(g, 0)} g → ${fmt(f.per100.kcal * g / 100, 0)} kcal · P ${fmt(f.per100.protein * g / 100)} · HC ${fmt(f.per100.carbs * g / 100)} · G ${fmt(f.per100.fat * g / 100)}") },
-                    modifier = Modifier.clickableNoRipple {
+                val n = f.per100.forGrams(g)
+                FoodRow(
+                    f, onClick = {
                         Session.pendingFood = f.copy(source = if (f.source == "Base de datos local") "Descrito por ti" else f.source)
                         Session.pendingGrams = g
                         nav.navigate("detail")
                     },
+                    subtitle = "${fmt(g, 0)} ${f.unit} · P ${fmt(n.protein, 0)} · H ${fmt(n.carbs, 0)} · G ${fmt(n.fat, 0)}",
+                    value = fmt(n.kcal, 0), trailing = "kcal",
                 )
             }
             item {

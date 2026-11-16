@@ -4,8 +4,15 @@
 
 App Android (Kotlin + Jetpack Compose) para registrar lo que comes y calcular calorías y nutrientes.
 
+<p>
+<img src="capturas/1_hoy.png" width="190"> <img src="capturas/2_anadir.png" width="190">
+<img src="capturas/3_detalle.png" width="190"> <img src="capturas/4_perfil.png" width="190">
+</p>
+
 ## Formas de añadir comida
 - **Código de barras**: cámara + ML Kit (modelo incluido en la app) → datos de Open Food Facts (requiere internet).
+  Con «Añadir al instante» se apunta solo con la cantidad del envase y puedes escanear varios seguidos.
+- **Mis alimentos**: productos guardados con los datos del envoltorio (y su código de barras, funciona sin internet).
 - **Búsqueda**: base local de unos 160 alimentos genéricos (sin conexión) + productos de Open Food Facts (online).
 - **Foto con IA local**: modelo EfficientNet-Lite2 (Google/MediaPipe) dentro del APK, funciona sin internet.
   Reconoce unas 50 comidas comunes (pizza, hamburguesa, fruta, verdura, pasta carbonara, helado…); tú confirmas y ajustas los gramos.
@@ -18,6 +25,9 @@ Miller, Hamwi, IMC 22), grasa corporal estimada, metabolismo basal (Mifflin-St J
 objetivo calórico y de macronutrientes. Pestaña "Progreso" con gráfica de peso y calorías.
 
 Los datos se guardan solo en el móvil.
+
+## Capturas de pantalla
+`./gradlew testDebugUnitTest --tests '*Screenshots*'` genera capturas en `app/build/screens/` (Robolectric, sin emulador).
 
 ## Compilar
 Requisitos: JDK 17+ y Android SDK (platform 35). `./gradlew assembleRelease` →

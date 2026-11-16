@@ -1,6 +1,8 @@
 package com.nutridiario.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,7 +22,7 @@ import com.nutridiario.app.*
 fun MyFoodsScreen(nav: NavController) {
     val data by Repository.data.collectAsStateWithLifecycle()
     val foods = data.customFoods
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize()) {
             BackBar("Mis alimentos", nav)
             if (foods.isEmpty()) {
@@ -31,24 +33,17 @@ fun MyFoodsScreen(nav: NavController) {
             }
             LazyColumn(Modifier.weight(1f)) {
                 items(foods) { f ->
-                    ListItem(
-                        headlineContent = { Text(f.name) },
-                        supportingContent = {
-                            Text(
-                                listOfNotNull(
-                                    f.brand, f.packageG?.let { "envase ${fmt(it, 0)} ${f.unit}" },
-                                    "${fmt(f.per100.kcal, 0)} kcal/100 ${f.unit}", f.barcode?.let { "📷 $it" },
-                                ).joinToString(" · ")
-                            )
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { Session.editorFood = f; Session.editorIsMine = true; Session.manualText = ""; nav.navigate("custom") }) {
-                                Icon(Icons.Filled.Edit, "Editar")
-                            }
-                        },
-                        modifier = Modifier.clickableNoRipple {
+                    FoodRow(
+                        f,
+                        onClick = {
                             Session.editingEntry = null; Session.pendingFood = f; Session.pendingGrams = null
                             nav.navigate("detail")
+                        },
+                        subtitle = listOfNotNull(f.brand, f.packageG?.let { "envase ${fmt(it, 0)} ${f.unit}" }, f.barcode?.let { "📷 escaneable" }).joinToString(" · "),
+                        action = {
+                            IconButton(onClick = { Session.editorFood = f; Session.editorIsMine = true; Session.manualText = ""; nav.navigate("custom") }) {
+                                Icon(Icons.Filled.Edit, "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         },
                     )
                 }
@@ -57,7 +52,8 @@ fun MyFoodsScreen(nav: NavController) {
         }
         ExtendedFloatingActionButton(
             onClick = { Session.editorFood = null; Session.editorIsMine = false; Session.manualText = ""; Session.pendingGrams = null; nav.navigate("custom") },
-            icon = { Icon(Icons.Filled.Add, null) }, text = { Text("Nuevo") },
+            icon = { Icon(Icons.Filled.Add, null) }, text = { Text("Nuevo alimento", fontWeight = FontWeight.Bold) },
+            containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
     }

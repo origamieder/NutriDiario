@@ -13,7 +13,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
 import com.nutridiario.app.*
 
 private enum class DefaultQty(val label: String) { PACKAGE("Envase entero"), SERVING("Una ración"), CUSTOM("Otra cantidad") }
@@ -57,6 +69,13 @@ fun CustomFoodScreen(nav: NavController) {
     }
     var customQty by remember { mutableStateOf(d(original?.defaultG ?: Session.pendingGrams)) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var scanning by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val camPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) scanning = true }
+    fun startScan() {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) scanning = true
+        else camPerm.launch(Manifest.permission.CAMERA)
+    }
 
     fun num(s: String?) = s?.replace(',', '.')?.toDoubleOrNull()
     val pkgG = num(pkg)?.takeIf { it > 0 }
@@ -102,34 +121,51 @@ fun CustomFoodScreen(nav: NavController) {
         return f
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         BackBar(if (isMine) "Editar mi alimento" else "Nuevo alimento", nav) {
             if (isMine) IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, "Borrar") }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text(
-                "Copia los datos que aparecen en el envoltorio. Se guardará en Mis alimentos y la próxima vez lo encontrarás buscándolo o escaneando su código.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            OutlinedTextField(name, { name = it }, label = { Text("Nombre *") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(brand, { brand = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(
-                barcode, { barcode = it.filter(Char::isDigit) }, label = { Text("Código de barras (números bajo las barras)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true,
-            )
-
-            SectionTitle("Envase")
+            Row(
+                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(MaterialTheme.colorScheme.primaryContainer).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("📦", fontSize = 26.sp); Spacer(Modifier.width(12.dp))
+                Text(
+                    "Copia los datos del envoltorio. Se guardará en Mis alimentos y la próxima vez lo encontrarás buscándolo o escaneándolo.",
+                    style = Caption, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            AppCard(Modifier.fillMaxWidth()) {
+            Text("Producto", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(name, { name = it }, label = { Text("Nombre *") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium)
+            OutlinedTextField(brand, { brand = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    barcode, { barcode = it.filter(Char::isDigit) }, label = { Text("Código de barras") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f), singleLine = true, shape = MaterialTheme.shapes.medium,
+                )
+                Spacer(Modifier.width(8.dp))
+                FilledTonalButton(onClick = { startScan() }, modifier = Modifier.padding(top = 8.dp).height(56.dp)) { Text("📷 Escanear") }
+            }
+            }
+            Spacer(Modifier.height(12.dp))
+            AppCard(Modifier.fillMaxWidth()) {
+            Text("Envase", style = MaterialTheme.typography.titleMedium)
             Row {
                 FilterChip(unit == "g", { unit = "g" }, label = { Text("Sólido (g)") }); Spacer(Modifier.width(8.dp))
                 FilterChip(unit == "ml", { unit = "ml" }, label = { Text("Bebida (ml)") })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Num("Contenido del envase", pkg, { pkg = it }, unit, Modifier.weight(1f))
-                Num("Tamaño de la ración", serving, { serving = it }, unit, Modifier.weight(1f))
+                Num("Envase", pkg, { pkg = it }, unit, Modifier.weight(1f))
+                Num("Ración", serving, { serving = it }, unit, Modifier.weight(1f))
             }
-            Text("Ej.: paquete de 100 g, lata de 500 ml. La ración es opcional (\"por galleta: 12 g\").", style = MaterialTheme.typography.bodySmall)
-
-            SectionTitle("Información nutricional")
+            Text("Ej.: paquete de 100 g, lata de 500 ml. La ración es opcional (\"por galleta: 12 g\").", style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(12.dp))
+            AppCard(Modifier.fillMaxWidth()) {
+            Text("Información nutricional", style = MaterialTheme.typography.titleMedium)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Valores: ", style = MaterialTheme.typography.bodyMedium)
                 FilterChip(!perServing, { perServing = false }, label = { Text("por 100 $unit") }); Spacer(Modifier.width(8.dp))
@@ -151,9 +187,11 @@ fun CustomFoodScreen(nav: NavController) {
                 Num("Fibra", fields["fiber"], { fields["fiber"] = it }, "g", Modifier.weight(1f))
                 Num("Sal", fields["salt"], { fields["salt"] = it }, "g", Modifier.weight(1f))
             }
-            Text("Si la etiqueta solo da kJ, divide entre 4,184 para obtener kcal.", style = MaterialTheme.typography.bodySmall)
-
-            SectionTitle("Al añadirlo, poner por defecto")
+            Text("Si la etiqueta solo da kJ, divide entre 4,184 para obtener kcal.", style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(12.dp))
+            AppCard(Modifier.fillMaxWidth()) {
+            Text("Al añadirlo, poner por defecto", style = MaterialTheme.typography.titleMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DefaultQty.entries.forEach { m ->
                     val extra = when (m) {
@@ -165,6 +203,7 @@ fun CustomFoodScreen(nav: NavController) {
                 }
             }
             if (defaultMode == DefaultQty.CUSTOM) Num("Cantidad por defecto", customQty, { customQty = it }, unit, Modifier.fillMaxWidth())
+            }
             Spacer(Modifier.height(16.dp))
         }
         problem?.let { Text(it, color = Over, modifier = Modifier.padding(horizontal = 16.dp)) }
@@ -182,6 +221,20 @@ fun CustomFoodScreen(nav: NavController) {
                 },
                 enabled = valid, modifier = Modifier.weight(1f).height(52.dp),
             ) { Text("Guardar y añadir", fontWeight = FontWeight.Bold) }
+        }
+    }
+
+    if (scanning) {
+        Dialog(onDismissRequest = { scanning = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Column(Modifier.fillMaxWidth(0.92f).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
+                Box(Modifier.fillMaxWidth().height(280.dp).background(Color.Black)) {
+                    CameraBarcodePreview(enabled = true) { c -> barcode = c; scanning = false }
+                }
+                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Apunta al código de barras", Modifier.weight(1f))
+                    TextButton(onClick = { scanning = false }) { Text("Cancelar") }
+                }
+            }
         }
     }
 
@@ -205,7 +258,7 @@ fun CustomFoodScreen(nav: NavController) {
 private fun Num(label: String, value: String?, onChange: (String) -> Unit, suffix: String, modifier: Modifier) {
     OutlinedTextField(
         value ?: "", { onChange(it.filter { c -> c.isDigit() || c == ',' || c == '.' }) },
-        label = { Text(label) }, suffix = { Text(suffix) }, singleLine = true,
+        label = { Text(label) }, suffix = { Text(suffix) }, singleLine = true, shape = MaterialTheme.shapes.medium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = modifier,
     )
 }

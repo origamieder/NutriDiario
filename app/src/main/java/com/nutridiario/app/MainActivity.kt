@@ -1,6 +1,5 @@
 package com.nutridiario.app
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -32,18 +32,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent { NutriTheme { AppRoot() } }
     }
-}
-
-@Composable
-fun NutriTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val ctx = LocalContext.current
-    val scheme = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
-        dark -> darkColorScheme(primary = Color(0xFF81C784), secondary = Color(0xFFFFB74D))
-        else -> lightColorScheme(primary = Color(0xFF2E7D32), secondary = Color(0xFFEF6C00))
-    }
-    MaterialTheme(colorScheme = scheme, content = content)
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -65,7 +53,7 @@ fun AppRoot() {
     Scaffold(
         bottomBar = {
             if (current in tabs.map { it.route }) {
-                NavigationBar {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest, tonalElevation = 0.dp) {
                     tabs.forEach { t ->
                         NavigationBarItem(
                             selected = current == t.route,
@@ -78,6 +66,7 @@ fun AppRoot() {
                             },
                             icon = { Icon(t.icon, null) },
                             label = { Text(t.label) },
+                            colors = NavigationBarItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.primaryContainer),
                         )
                     }
                 }

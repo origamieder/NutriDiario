@@ -105,15 +105,14 @@ fun PhotoScreen(nav: NavController) {
                 }
                 items(foods) { p ->
                     val f = p.food!!
-                    ListItem(
-                        headlineContent = { Text(f.name, fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("${fmt(f.per100.kcal, 0)} kcal/100 g · ración típica ${fmt(f.portionG ?: 100.0, 0)} g") },
-                        trailingContent = { Text("${fmt(p.score * 100.0, 0)} %") },
-                        modifier = Modifier.clickableNoRipple {
+                    FoodRow(
+                        f, onClick = {
                             Session.pendingFood = f.copy(source = "Foto (IA local)")
                             Session.pendingGrams = f.portionG
                             nav.navigate("detail")
                         },
+                        subtitle = "${fmt(f.per100.kcal, 0)} kcal/100 g · ración ${fmt(f.portionG ?: 100.0, 0)} g",
+                        value = "${fmt(p.score * 100.0, 0)} %", trailing = "seguro",
                     )
                 }
                 item {
