@@ -37,7 +37,26 @@ data class FoodItem(
     val source: String,
     val barcode: String? = null,
     val imageUrl: String? = null,
-)
+    /** Contenido de un envase/unidad (lata de 500 ml, paquete de 160 g…), si se conoce. */
+    val packageG: Double? = null,
+    /** "g" o "ml" */
+    val unit: String = "g",
+) {
+    /**
+     * Cantidad que se propone automáticamente: el envase entero si es individual
+     * (lata, botellín, paquete de galletas…), si no la ración indicada, si no 100.
+     */
+    fun defaultAmount(): Double = when {
+        packageG != null && packageG <= MAX_SINGLE_PACKAGE -> packageG
+        portionG != null -> portionG
+        else -> 100.0
+    }
+
+    companion object {
+        /** Envases hasta este tamaño se consideran "de una vez" (latas de 500 ml, bolsas, paquetes pequeños). */
+        const val MAX_SINGLE_PACKAGE = 600.0
+    }
+}
 
 enum class Meal(val label: String) {
     BREAKFAST("Desayuno"), LUNCH("Comida"), SNACK("Merienda / snack"), DINNER("Cena");

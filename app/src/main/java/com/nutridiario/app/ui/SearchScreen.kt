@@ -74,7 +74,9 @@ fun SearchScreen(nav: NavController) {
                 ListItem(
                     leadingContent = { f.imageUrl?.let { AsyncImage(it, null, Modifier.size(48.dp)) } },
                     headlineContent = { Text(f.name) },
-                    supportingContent = { Text(listOfNotNull(f.brand, "${fmt(f.per100.kcal, 0)} kcal/100 g").joinToString(" · ")) },
+                    supportingContent = {
+                        Text(listOfNotNull(f.brand, f.packageG?.let { "${fmt(it, 0)} ${f.unit}" }, "${fmt(f.per100.kcal, 0)} kcal/100 ${f.unit}").joinToString(" · "))
+                    },
                     modifier = Modifier.clickableNoRipple { pick(f) },
                 )
             }

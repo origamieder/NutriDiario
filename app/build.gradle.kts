@@ -13,8 +13,8 @@ android {
         applicationId = "com.nutridiario.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             // ./gradlew assembleRelease -Pemulator  → incluye también x86_64 para el emulador de Android Studio
@@ -69,4 +69,5 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

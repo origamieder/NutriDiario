@@ -27,7 +27,7 @@ fun FoodDetailScreen(nav: NavController) {
     val food = Session.pendingFood
     if (food == null) { LaunchedEffect(Unit) { nav.popBackStack() }; return }
     val editing = Session.editingEntry
-    var gramsText by remember { mutableStateOf(fmt(Session.pendingGrams ?: food.portionG ?: 100.0, 0)) }
+    var gramsText by remember { mutableStateOf(fmt(Session.pendingGrams ?: food.defaultAmount(), 0)) }
     var meal by remember { mutableStateOf(editing?.meal ?: Meal.byTime(LocalTime.now().hour)) }
     val grams = gramsText.replace(',', '.').toDoubleOrNull() ?: 0.0
     val n = food.per100.forGrams(grams)
@@ -51,15 +51,19 @@ fun FoodDetailScreen(nav: NavController) {
             OutlinedTextField(
                 value = gramsText,
                 onValueChange = { gramsText = it.filter { c -> c.isDigit() || c == ',' || c == '.' } },
-                label = { Text("Cantidad (g o ml, aproximada)") },
-                suffix = { Text("g") },
+                label = { Text(if (food.packageG != null) "Cantidad (puesta según el envase)" else "Cantidad (aproximada)") },
+                suffix = { Text(food.unit) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                food.packageG?.let { pk ->
+                    AssistChip(onClick = { gramsText = fmt(pk, 0) }, label = { Text("Envase entero (${fmt(pk, 0)} ${food.unit})") })
+                    AssistChip(onClick = { gramsText = fmt(pk / 2, 0) }, label = { Text("½ envase") })
+                }
                 food.portionG?.let { pg ->
-                    AssistChip(onClick = { gramsText = fmt(pg, 0) }, label = { Text("${food.portionName ?: "1 ración"} (${fmt(pg, 0)} g)") })
+                    AssistChip(onClick = { gramsText = fmt(pg, 0) }, label = { Text("${food.portionName ?: "1 ración"} (${fmt(pg, 0)} ${food.unit})") })
                     AssistChip(onClick = { gramsText = fmt(pg * 2, 0) }, label = { Text("x2") })
                     AssistChip(onClick = { gramsText = fmt(pg / 2, 0) }, label = { Text("½") })
                 }
@@ -88,9 +92,9 @@ fun FoodDetailScreen(nav: NavController) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            NutrientTable(n, "Valores para ${fmt(grams, 0)} g")
+            NutrientTable(n, "Valores para ${fmt(grams, 0)} ${food.unit}")
             Spacer(Modifier.height(12.dp))
-            NutrientTable(food.per100, "Valores por 100 g")
+            NutrientTable(food.per100, "Valores por 100 ${food.unit}")
             Spacer(Modifier.height(16.dp))
         }
         Button(

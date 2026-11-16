@@ -10,7 +10,7 @@ import java.net.URLEncoder
 /** Cliente de Open Food Facts (base de datos abierta y gratuita de productos envasados). */
 object OpenFoodFacts {
     private const val FIELDS =
-        "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,quantity"
+        "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,quantity,product_quantity,product_quantity_unit"
 
     private fun get(url: String): JSONObject {
         val c = URL(url).openConnection() as HttpURLConnection
@@ -43,7 +43,7 @@ object OpenFoodFacts {
         (0 until arr.length()).mapNotNull { parse(arr.getJSONObject(it), "Open Food Facts") }
     }
 
-    private fun parse(p: JSONObject, source: String): FoodItem? {
+    internal fun parse(p: JSONObject, source: String): FoodItem? {
         val n = p.optJSONObject("nutriments") ?: return null
         fun v(key: String): Double = n.optDouble("${key}_100g", Double.NaN).let { if (it.isNaN()) 0.0 else it }
         var kcal = n.optDouble("energy-kcal_100g", Double.NaN)
@@ -56,6 +56,11 @@ object OpenFoodFacts {
             .map { p.optString(it).trim() }.firstOrNull { it.isNotBlank() } ?: return null
         val salt = v("salt").takeIf { it > 0 } ?: (v("sodium") * 2.5)
         val serving = p.optDouble("serving_quantity", Double.NaN).takeIf { !it.isNaN() && it > 0 }
+        val pkg = PackageQuantity.parse(
+            p.optString("quantity"),
+            p.optDouble("product_quantity", Double.NaN).takeIf { !it.isNaN() && it > 0 },
+            p.optString("product_quantity_unit"),
+        )
         return FoodItem(
             name = name,
             brand = p.optString("brands").split(",").firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
@@ -65,6 +70,8 @@ object OpenFoodFacts {
             source = source,
             barcode = p.optString("code").takeIf { it.isNotBlank() },
             imageUrl = p.optString("image_front_small_url").takeIf { it.isNotBlank() },
+            packageG = pkg?.amount,
+            unit = pkg?.unit ?: "g",
         )
     }
 }
