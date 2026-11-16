@@ -51,7 +51,7 @@ fun PhotoScreen(nav: NavController) {
         busy = true; preds = null; error = null
         scope.launch {
             try {
-                val bmp = withContext(Dispatchers.IO) { loadBitmap(ctx, uri) }
+                val bmp = withContext(Dispatchers.IO) { ImageStore.loadBitmap(ctx, uri) }
                 bitmap = bmp
                 preds = withContext(Dispatchers.Default) { FoodClassifier.classify(ctx, bmp) }
             } catch (e: Exception) {
@@ -135,26 +135,4 @@ fun PhotoScreen(nav: NavController) {
             }
         }
     }
-}
-
-private fun loadBitmap(ctx: Context, uri: Uri, maxSide: Int = 1024): Bitmap {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    ctx.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it, null, bounds) }
-    var sample = 1
-    while (bounds.outWidth / (sample * 2) >= maxSide && bounds.outHeight / (sample * 2) >= maxSide) sample *= 2
-    val opts = BitmapFactory.Options().apply { inSampleSize = sample; inPreferredConfig = Bitmap.Config.ARGB_8888 }
-    val bmp = ctx.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it, null, opts) }
-        ?: throw IllegalStateException("imagen no válida")
-    val rotation = runCatching {
-        ctx.contentResolver.openInputStream(uri).use { s ->
-            when (ExifInterface(s!!).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
-                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-                else -> 0f
-            }
-        }
-    }.getOrDefault(0f)
-    return if (rotation == 0f) bmp
-    else Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(rotation) }, true)
 }

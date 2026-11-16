@@ -10,7 +10,7 @@ import java.net.URLEncoder
 /** Cliente de Open Food Facts (base de datos abierta y gratuita de productos envasados). */
 object OpenFoodFacts {
     private const val FIELDS =
-        "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,quantity,product_quantity,product_quantity_unit"
+        "code,product_name,product_name_es,generic_name_es,brands,nutriments,serving_quantity,serving_size,image_front_small_url,image_front_url,quantity,product_quantity,product_quantity_unit"
 
     /** Open Food Facts a veces responde 503 cuando está saturado: se reintenta un par de veces. */
     private fun get(url: String): JSONObject {
@@ -62,6 +62,7 @@ object OpenFoodFacts {
                 brand = p.optString("brands").split(",").firstOrNull()?.trim()?.takeIf { it.isNotBlank() },
                 per100 = Nutrients(), source = "Mis alimentos", barcode = code,
                 packageG = pkg?.amount, unit = pkg?.unit ?: "g",
+                imageUrl = imageOf(p),
             )
         )
     }
@@ -74,6 +75,34 @@ object OpenFoodFacts {
         )
         val arr = j.optJSONArray("products") ?: return@withContext emptyList()
         (0 until arr.length()).mapNotNull { parse(arr.getJSONObject(it), "Open Food Facts") }
+    }
+
+    private fun imageOf(p: JSONObject): String? =
+        listOf("image_front_url", "image_front_small_url").map { p.optString(it) }.firstOrNull { it.isNotBlank() }
+
+    data class ImageCandidate(val url: String, val title: String)
+
+    /** Fotos de producto candidatas: primero la del código de barras, luego las de búsqueda por nombre. */
+    suspend fun imageCandidates(name: String, brand: String?, barcode: String?): List<ImageCandidate> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<ImageCandidate>()
+        if (!barcode.isNullOrBlank()) runCatching {
+            val j = get("https://world.openfoodfacts.org/api/v2/product/$barcode.json?fields=product_name,brands,image_front_url,image_front_small_url")
+            j.optJSONObject("product")?.let { p -> imageOf(p)?.let { out += ImageCandidate(it, p.optString("product_name").ifBlank { "Este código" }) } }
+        }
+        val q = listOfNotNull(name.takeIf { it.isNotBlank() }, brand?.takeIf { it.isNotBlank() }).joinToString(" ")
+        if (q.isNotBlank()) {
+            val j = get(
+                "https://es.openfoodfacts.org/cgi/search.pl?search_terms=${URLEncoder.encode(q, "UTF-8")}&search_simple=1" +
+                    "&action=process&json=1&page_size=24&sort_by=unique_scans_n&fields=product_name,brands,image_front_url,image_front_small_url"
+            )
+            val arr = j.optJSONArray("products")
+            if (arr != null) for (i in 0 until arr.length()) {
+                val p = arr.getJSONObject(i)
+                val url = imageOf(p) ?: continue
+                out += ImageCandidate(url, listOf(p.optString("product_name"), p.optString("brands").substringBefore(",")).filter { it.isNotBlank() }.joinToString(" · "))
+            }
+        }
+        out.distinctBy { it.url }
     }
 
     internal fun parse(p: JSONObject, source: String): FoodItem? {
@@ -102,7 +131,7 @@ object OpenFoodFacts {
             portionName = p.optString("serving_size").takeIf { it.isNotBlank() && serving != null }?.let { "1 ración ($it)" },
             source = source,
             barcode = p.optString("code").takeIf { it.isNotBlank() },
-            imageUrl = p.optString("image_front_small_url").takeIf { it.isNotBlank() },
+            imageUrl = imageOf(p),
             packageG = pkg?.amount,
             unit = pkg?.unit ?: "g",
         )

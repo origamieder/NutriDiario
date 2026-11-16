@@ -127,6 +127,29 @@ fun CustomFoodScreen(nav: NavController) {
     }
     LaunchedEffect(Unit) { if (autoLabel) shootLabel() }
 
+    // --- Foto del producto
+    var imageUrl by remember { mutableStateOf(original?.imageUrl) }
+    var imageBusy by remember { mutableStateOf(false) }
+    var showImageSearch by remember { mutableStateOf(false) }
+    val photoUri = remember {
+        val dir = java.io.File(ctx.cacheDir, "photos").apply { mkdirs() }
+        FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", java.io.File(dir, "producto.jpg"))
+    }
+    fun setImageFrom(uri: android.net.Uri) {
+        imageBusy = true
+        scope.launch {
+            try { imageUrl = ImageStore.saveFromUri(ctx, uri) } catch (_: Exception) { }
+            finally { imageBusy = false }
+        }
+    }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok -> if (ok) setImageFrom(photoUri) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { it?.let { u -> setImageFrom(u) } }
+    val photoPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) takePhoto.launch(photoUri) }
+    fun shootPhoto() {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) takePhoto.launch(photoUri)
+        else photoPerm.launch(Manifest.permission.CAMERA)
+    }
+
     fun num(s: String?) = s?.replace(',', '.')?.toDoubleOrNull()
     val pkgG = num(pkg)?.takeIf { it > 0 }
     val servingG = num(serving)?.takeIf { it > 0 }
@@ -157,7 +180,7 @@ fun CustomFoodScreen(nav: NavController) {
             portionName = servingG?.let { "1 ración" },
             source = "Mis alimentos",
             barcode = barcode.trim().ifBlank { null },
-            imageUrl = original?.imageUrl,
+            imageUrl = imageUrl,
             packageG = pkgG,
             unit = unit,
             defaultG = defaultG,
@@ -213,6 +236,30 @@ fun CustomFoodScreen(nav: NavController) {
             Spacer(Modifier.height(12.dp))
             AppCard(Modifier.fillMaxWidth()) {
             Text("Producto", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(contentAlignment = Alignment.Center) {
+                    FoodAvatar(name.ifBlank { "?" }, imageUrl, 96.dp)
+                    if (imageBusy) CircularProgressIndicator(Modifier.size(32.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilledTonalButton(onClick = { shootPhoto() }, Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Text("📷 Foto") }
+                        FilledTonalButton(
+                            onClick = { pickPhoto.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp),
+                        ) { Text("🖼️ Galería") }
+                    }
+                    Button(
+                        onClick = { showImageSearch = true },
+                        enabled = name.isNotBlank() || barcode.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("🌐 Buscar foto online") }
+                    if (imageUrl != null) TextButton(onClick = { imageUrl = null }, contentPadding = PaddingValues(0.dp)) { Text("Quitar foto") }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
             OutlinedTextField(name, { name = it }, label = { Text("Nombre *") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium)
             OutlinedTextField(brand, { brand = it }, label = { Text("Marca") }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -298,6 +345,19 @@ fun CustomFoodScreen(nav: NavController) {
         }
     }
 
+    if (showImageSearch) {
+        ImageSearchDialog(
+            name = name, brand = brand.ifBlank { null }, barcode = barcode.ifBlank { null },
+            onDismiss = { showImageSearch = false },
+            onPick = { url ->
+                showImageSearch = false
+                imageUrl = url // se ve al momento; en segundo plano se guarda una copia en el móvil
+                imageBusy = true
+                scope.launch { try { imageUrl = ImageStore.download(ctx, url) } finally { imageBusy = false } }
+            },
+        )
+    }
+
     if (scanning) {
         Dialog(onDismissRequest = { scanning = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Column(Modifier.fillMaxWidth(0.92f).clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
@@ -335,4 +395,55 @@ private fun Num(label: String, value: String?, onChange: (String) -> Unit, suffi
         label = { Text(label) }, suffix = { Text(suffix) }, singleLine = true, shape = MaterialTheme.shapes.medium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = modifier,
     )
+}
+
+/** Cuadrícula de fotos de producto encontradas en Open Food Facts para elegir una. */
+@Composable
+private fun ImageSearchDialog(name: String, brand: String?, barcode: String?, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    var results by remember { mutableStateOf<List<OpenFoodFacts.ImageCandidate>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try { results = OpenFoodFacts.imageCandidates(name, brand, barcode) }
+        catch (e: Exception) { error = "No se pudo buscar. ¿Tienes internet?" }
+    }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.8f).clip(MaterialTheme.shapes.large)
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest).padding(16.dp)
+        ) {
+            Text("Elige la foto", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Fotos de Open Food Facts para «${listOfNotNull(name.ifBlank { null }, brand).joinToString(" ")}»",
+                style = Caption, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val list = results
+                when {
+                    error != null -> Text(error!!, color = Over)
+                    list == null -> CircularProgressIndicator()
+                    list.isEmpty() -> Text("No he encontrado fotos. Prueba con otro nombre o haz tú la foto.", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    else -> androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(list.size) { i ->
+                            val c = list[i]
+                            Column(Modifier.clip(MaterialTheme.shapes.medium).clickable { onPick(c.url) }) {
+                                coil.compose.AsyncImage(
+                                    c.url, c.title,
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(MaterialTheme.shapes.medium).background(Color.White),
+                                )
+                                Text(c.title, style = Caption, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("Cerrar") }
+        }
+    }
 }

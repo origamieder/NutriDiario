@@ -49,6 +49,7 @@ class Screenshots {
     private fun shot(name: String, content: @Composable () -> Unit) {
         rule.setContent { NutriTheme { content() } }
         rule.waitForIdle()
+        Thread.sleep(300); rule.waitForIdle()
         val view = rule.activity.window.decorView
         val bmp = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bmp))
@@ -66,6 +67,16 @@ class Screenshots {
     @Test fun progress() = shot("5_progreso") { ProgressScreen() }
     @Test fun myFoods() {
         Repository.saveCustomFood(null, FoodItem("Chocobom", "Salica", Nutrients(500.0, 6.0, 63.0, 33.0, 25.0, 11.0), 25.0, "1 ración", "Mis alimentos", "8410368033824", packageG = 100.0, defaultG = 100.0))
+        val img = File("build/screens-tmp/photo.png").apply { parentFile!!.mkdirs() }
+        val b = Bitmap.createBitmap(300, 300, Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(b).apply {
+            drawColor(android.graphics.Color.rgb(250, 204, 21))
+            drawCircle(150f, 150f, 110f, android.graphics.Paint().apply { color = android.graphics.Color.rgb(220, 38, 38) })
+        }
+        img.outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        Repository.saveCustomFood(null, FoodItem("Galletas rellenas", "Hacendado", Nutrients(480.0, 6.0, 66.0, 36.0, 19.0, 9.8), 26.0, "1 ración", "Mis alimentos", "8480000111111", imageUrl = "file://" + img.absolutePath, packageG = 500.0))
+        Repository.saveCustomFood(null, FoodItem("Monster Mango Loco", "Monster", Nutrients(47.0, 0.0, 12.0, 12.0), null, null, "Mis alimentos", "5060337500999", packageG = 500.0, unit = "ml"))
+        Repository.saveCustomFood(null, FoodItem("Yogur proteico", "Danone", Nutrients(60.0, 10.0, 4.0, 4.0, 0.2), null, null, "Mis alimentos", packageG = 160.0))
         shot("7_mis_alimentos") { MyFoodsScreen(rememberNavController()) }
     }
     @Test fun editor() {

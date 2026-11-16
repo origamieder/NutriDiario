@@ -10,6 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,7 +91,11 @@ fun FoodAvatar(name: String, imageUrl: String?, size: Dp = 48.dp) {
     ) {
         Text(foodEmoji(name), fontSize = (size.value * 0.5f).sp)
         if (imageUrl != null) {
-            AsyncImage(imageUrl, null, Modifier.fillMaxSize().background(Color.White), contentScale = ContentScale.Crop)
+            var failed by remember(imageUrl) { mutableStateOf(false) }
+            if (!failed) AsyncImage(
+                imageUrl, null, Modifier.fillMaxSize().background(Color.White), contentScale = ContentScale.Crop,
+                onState = { if (it is coil.compose.AsyncImagePainter.State.Error) failed = true },
+            )
         }
     }
 }
